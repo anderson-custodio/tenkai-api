@@ -103,6 +103,7 @@ func defineRotes(r *mux.Router, appContext *AppContext) {
 	r.HandleFunc("/environments/edit", appContext.editEnvironment).Methods("POST")
 	r.HandleFunc("/environments", appContext.addEnvironments).Methods("POST")
 	r.HandleFunc("/environments", appContext.getEnvironments).Methods("GET")
+	r.HandleFunc("/environments/{id}/users", appContext.getEnvironmentUsers).Methods("GET")
 	r.HandleFunc("/environments/all", appContext.getAllEnvironments).Methods("GET")
 	r.HandleFunc("/environments/export/{id}", appContext.export).Methods("GET")
 	r.HandleFunc("/hasConfigMap", appContext.hasConfigMap).Methods("POST")

@@ -2,10 +2,13 @@ package handlers
 
 import (
 	"encoding/json"
+	"net/http"
+	"strconv"
+
+	"github.com/gorilla/mux"
 	"github.com/softplan/tenkai-api/pkg/dbms/model"
 	"github.com/softplan/tenkai-api/pkg/global"
 	"github.com/softplan/tenkai-api/pkg/util"
-	"net/http"
 )
 
 func (appContext *AppContext) createOrUpdateUserEnvironmentRole(w http.ResponseWriter, r *http.Request) {
@@ -54,4 +57,21 @@ func (appContext *AppContext) getUserPolicyByEnvironment(w http.ResponseWriter, 
 	w.WriteHeader(http.StatusOK)
 	w.Write(data)
 
+}
+
+func (appContext *AppContext) getEnvironmentUsers(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	id, err := strconv.Atoi(vars["id"])
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	list, err := appContext.Repositories.UserEnvironmentRoleDAO.GetUsersAndRoleByEnv(id)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	data, _ := json.Marshal(list)
+	w.Header().Set(global.ContentType, global.JSONContentType)
+	w.Write(data)
 }
