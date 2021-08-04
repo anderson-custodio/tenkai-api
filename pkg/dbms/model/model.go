@@ -213,3 +213,10 @@ type EnvironmentsDiff struct {
 type CompareEnvsResponse struct {
 	List []EnvironmentsDiff `json:"list"`
 }
+
+//UserEnvRole struct
+type UserEnvRole struct {
+	Environment string
+	User        string
+	Role        string
+}

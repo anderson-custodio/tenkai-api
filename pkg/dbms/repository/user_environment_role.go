@@ -1,6 +1,8 @@
 package repository
 
 import (
+	"fmt"
+
 	"github.com/jinzhu/gorm"
 	model2 "github.com/softplan/tenkai-api/pkg/dbms/model"
 )
@@ -9,6 +11,7 @@ import (
 type UserEnvironmentRoleDAOInterface interface {
 	CreateOrUpdate(so model2.UserEnvironmentRole) error
 	GetRoleByUserAndEnvironment(user model2.User, envID uint) (*model2.SecurityOperation, error)
+	GetUsersAndRoleByEnv(id int) ([]model2.UserEnvRole, error)
 }
 
 //UserEnvironmentRoleDAOImpl UserEnvironmentRoleDAOImpl
@@ -72,4 +75,20 @@ func (dao UserEnvironmentRoleDAOImpl) GetRoleByUserAndEnvironment(user model2.Us
 		return nil, nil
 	}
 	return &result, nil
+}
+
+//GetUsersAndRoleByEnv func
+func (dao UserEnvironmentRoleDAOImpl) GetUsersAndRoleByEnv(id int) ([]model2.UserEnvRole, error) {
+	sql := fmt.Sprintf("select u.email, e.\"name\", so.\"name\" from user_environment_roles uer join environments e on e.id = uer.environment_id join users u on u.id = uer.user_id join security_operations so on so.id = uer.security_operation_id where e.id = %d", id)
+	rows, err := dao.Db.Raw(sql).Rows()
+	if err != nil {
+		return nil, err
+	}
+	list := []model2.UserEnvRole{}
+	for rows.Next() {
+		m := model2.UserEnvRole{}
+		rows.Scan(&m.User, &m.Environment, &m.Role)
+		list = append(list, m)
+	}
+	return list, nil
 }

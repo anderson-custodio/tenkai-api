@@ -6,6 +6,8 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/gorilla/mux"
+	"github.com/softplan/tenkai-api/pkg/dbms/model"
 	mockRepo "github.com/softplan/tenkai-api/pkg/dbms/repository/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -143,4 +145,48 @@ func TestCreateOrUpdateUserEnvironmentRoleError(t *testing.T) {
 	handler.ServeHTTP(rr, req)
 
 	assert.Equal(t, http.StatusInternalServerError, rr.Code, "Response should be 500")
+}
+
+func TestGetEnvironmentUsersDBError(t *testing.T) {
+	appContext := AppContext{}
+
+	mockUserEnvRoleDao := &mockRepo.UserEnvironmentRoleDAOInterface{}
+	mockUserEnvRoleDao.On("GetUsersAndRoleByEnv", 999).Return(nil, errors.New("some database error"))
+	appContext.Repositories.UserEnvironmentRoleDAO = mockUserEnvRoleDao
+
+	req, err := http.NewRequest("GET", "/environments/999/users", nil)
+	assert.NoError(t, err)
+	assert.NotNil(t, req)
+
+	rr := httptest.NewRecorder()
+	r := mux.NewRouter()
+	r.HandleFunc("/environments/{id}/users", appContext.getEnvironmentUsers).Methods("GET")
+	r.ServeHTTP(rr, req)
+	assert.Equal(t, http.StatusInternalServerError, rr.Code)
+}
+
+func TestGetEnvironmentUsersOK(t *testing.T) {
+	appContext := AppContext{}
+
+	returnable := []model.UserEnvRole{
+		{
+			User:        "user",
+			Environment: "env",
+			Role:        "role",
+		},
+	}
+
+	mockUserEnvRoleDao := &mockRepo.UserEnvironmentRoleDAOInterface{}
+	mockUserEnvRoleDao.On("GetUsersAndRoleByEnv", 999).Return(returnable, nil)
+	appContext.Repositories.UserEnvironmentRoleDAO = mockUserEnvRoleDao
+
+	req, err := http.NewRequest("GET", "/environments/999/users", nil)
+	assert.NoError(t, err)
+	assert.NotNil(t, req)
+
+	rr := httptest.NewRecorder()
+	r := mux.NewRouter()
+	r.HandleFunc("/environments/{id}/users", appContext.getEnvironmentUsers).Methods("GET")
+	r.ServeHTTP(rr, req)
+	assert.Equal(t, http.StatusOK, rr.Code)
 }

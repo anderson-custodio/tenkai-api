@@ -59,14 +59,14 @@ type Deployments struct {
 	CreatedAt           time.Time
 	UpdatedAt           time.Time
 	DeletedAt           *time.Time
-	RequestDeploymentID uint            `json:"request_deployment_id"`
-	Environment         string          `json:"environment"`
-	Chart               string          `json:"chart"`
-	Success             bool            `json:"success"`
-	Message             string          `json:"message"`
-	Processed           bool            `json:"processed"`
-	DockerVersion       string          `json:"dockerVersion"`
-	ChartVersion        string          `json:"chartVersion"`
+	RequestDeploymentID uint   `json:"request_deployment_id"`
+	Environment         string `json:"environment"`
+	Chart               string `json:"chart"`
+	Success             bool   `json:"success"`
+	Message             string `json:"message"`
+	Processed           bool   `json:"processed"`
+	DockerVersion       string `json:"dockerVersion"`
+	ChartVersion        string `json:"chartVersion"`
 }
 
 //RequestDeployments struct to fill with query result to response /requestDeployments{id} GET
@@ -74,7 +74,7 @@ type RequestDeployments struct {
 	ID        uint
 	CreatedAt time.Time
 	UpdatedAt time.Time
-	User      string    `json:"user"`
-	Success   bool      `json:"success"`
-	Processed bool      `json:"processed"`
+	User      string `json:"user"`
+	Success   bool   `json:"success"`
+	Processed bool   `json:"processed"`
 }
