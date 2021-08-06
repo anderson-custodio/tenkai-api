@@ -82,8 +82,8 @@ func (dao UserEnvironmentRoleDAOImpl) GetUsersAndRoleByEnv(id int) ([]model2.Use
 	sql := fmt.Sprintf(`
 		select
 			distinct u.email,
-			e.\"name\",
-			so.\"name\"
+			e."name",
+			so."name"
 		from
 			user_environment_roles uer
 		join environments e on

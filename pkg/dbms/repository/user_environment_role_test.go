@@ -39,11 +39,10 @@ func TestGetUsersAndRoleByEnvOK(t *testing.T) {
 	rows := sqlmock.NewRows([]string{"email", "name", "name"}).AddRow("mymail", "envName", "role")
 
 	id := 999
-	sql := fmt.Sprintf(`
-		select
+	sql := fmt.Sprintf(`select
 			distinct u.email,
-			e.\"name\",
-			so.\"name\"
+			e."name",
+			so."name"
 		from
 			user_environment_roles uer
 		join environments e on
