@@ -79,7 +79,21 @@ func (dao UserEnvironmentRoleDAOImpl) GetRoleByUserAndEnvironment(user model2.Us
 
 //GetUsersAndRoleByEnv func
 func (dao UserEnvironmentRoleDAOImpl) GetUsersAndRoleByEnv(id int) ([]model2.UserEnvRole, error) {
-	sql := fmt.Sprintf("select u.email, e.\"name\", so.\"name\" from user_environment_roles uer join environments e on e.id = uer.environment_id join users u on u.id = uer.user_id join security_operations so on so.id = uer.security_operation_id where e.id = %d", id)
+	sql := fmt.Sprintf(`
+		select
+			distinct u.email,
+			e."name",
+			so."name"
+		from
+			user_environment_roles uer
+		join environments e on
+			e.id = uer.environment_id
+		join users u on
+			u.id = uer.user_id
+		join security_operations so on
+			so.id = uer.security_operation_id
+		where
+			e.id = %d`, id)
 	rows, err := dao.Db.Raw(sql).Rows()
 	if err != nil {
 		return nil, err
