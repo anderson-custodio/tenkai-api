@@ -252,6 +252,8 @@ func TestGetUserOk(t *testing.T) {
 	req, err := http.NewRequest("GET", "/users/9999", nil)
 	assert.NoError(t, err)
 
+	mockPrincipal(req)
+
 	rr := httptest.NewRecorder()
 	r := mux.NewRouter()
 	r.HandleFunc("/users/{id}", appContext.getUser).Methods("GET")
@@ -270,6 +272,7 @@ func TestGetUserError(t *testing.T) {
 
 	req, err := http.NewRequest("GET", "/users/1", nil)
 	assert.NoError(t, err)
+	mockPrincipal(req)
 
 	rr := httptest.NewRecorder()
 	r := mux.NewRouter()

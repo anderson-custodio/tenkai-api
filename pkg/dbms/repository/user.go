@@ -2,6 +2,7 @@ package repository
 
 import (
 	"database/sql"
+	"fmt"
 
 	"github.com/jinzhu/gorm"
 	model2 "github.com/softplan/tenkai-api/pkg/dbms/model"
@@ -16,6 +17,7 @@ type UserDAOInterface interface {
 	CreateOrUpdateUser(user model2.User) error
 	FindByEmail(email string) (model2.User, error)
 	FindByID(id string) (model2.User, error)
+	FindByUsersIDFilteredByIntersectionEnv(userID, userRequesterID int) (model2.User, error)
 }
 
 //UserDAOImpl UserDAOImpl
@@ -167,4 +169,44 @@ func (dao UserDAOImpl) FindByID(id string) (model2.User, error) {
 		return user, err
 	}
 	return user, nil
+}
+
+//FindByUsersIDFilteredByIntersectionEnv func
+func (dao UserDAOImpl) FindByUsersIDFilteredByIntersectionEnv(userID, userRequesterID int) (model2.User, error) {
+	sql := fmt.Sprintf(
+		`select
+			*
+		from
+			user_environment ue
+		join environments e on
+			e.id = ue.environment_id
+		join users u on
+			u.id = ue.user_id
+		where
+			ue.user_id = %d
+			and e.id in (
+			select
+				ue2.environment_id
+			from
+				user_environment ue2
+			where
+				ue2.user_id = %d);
+		`, userID, userRequesterID,
+	)
+	user := model2.User{}
+	rows, err := dao.Db.Raw(sql).Rows()
+	if err != nil {
+		return model2.User{}, err
+	}
+
+	defer rows.Close()
+	env := model2.Environment{}
+	envs := []model2.Environment{}
+	for rows.Next() {
+		dao.Db.ScanRows(rows, &user)
+		dao.Db.ScanRows(rows, &env)
+		envs = append(envs, env)
+	}
+	user.Environments = envs
+	return user, err
 }

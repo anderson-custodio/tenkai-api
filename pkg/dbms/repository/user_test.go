@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"errors"
 	"testing"
 
 	"github.com/DATA-DOG/go-sqlmock"
@@ -256,6 +257,48 @@ func TestFindByEmail(t *testing.T) {
 
 	u, e := userDAO.FindByEmail("musk@mars.com")
 	assert.NoError(t, e)
+	assert.NotNil(t, u)
+
+	mock.ExpectationsWereMet()
+}
+
+func TestFindByUsersIDFilteredByIntersectionEnvOK(t *testing.T) {
+	db, mock, err := sqlmock.New()
+	mock.MatchExpectationsInOrder(false)
+	assert.Nil(t, err)
+
+	gormDB, err := gorm.Open("postgres", db)
+	defer gormDB.Close()
+
+	userDAO := UserDAOImpl{}
+	userDAO.Db = gormDB
+	rows := sqlmock.NewRows([]string{"user_id", "environment_id", "id", "created_at", "updated_at", "deleted_at", "group", "name", "cluster_uri", "ca_certificate", "token", "namespace", "gateway", "product_version", "current_release", "env_type", "host", "username", "password", "id", "created_at", "updated_at", "deleted_at", "email", "default_environment_id"}).
+		AddRow("160", "135", "135", "2020-02-07 09:08:31", "2020-12-14 14:53:43", "", "unj", "env", "urlapi", "certificate", "token", "envname", "xpto", "", "", "", "", "", "", "160", "2020-09-23 14:13:48", "2020-09-23 14:13:48", "", "xpto@email", "0")
+
+	mock.ExpectQuery(`.*`).
+		WillReturnRows(rows)
+	u, e := userDAO.FindByUsersIDFilteredByIntersectionEnv(350, 349)
+	assert.NoError(t, e)
+	assert.NotNil(t, u)
+
+	mock.ExpectationsWereMet()
+}
+
+func TestFindByUsersIDFilteredByIntersectionEnvError(t *testing.T) {
+	db, mock, err := sqlmock.New()
+	mock.MatchExpectationsInOrder(false)
+	assert.Nil(t, err)
+
+	gormDB, err := gorm.Open("postgres", db)
+	defer gormDB.Close()
+
+	userDAO := UserDAOImpl{}
+	userDAO.Db = gormDB
+
+	mock.ExpectQuery(`.*`).
+		WillReturnError(errors.New("some error"))
+	u, e := userDAO.FindByUsersIDFilteredByIntersectionEnv(350, 349)
+	assert.Error(t, e)
 	assert.NotNil(t, u)
 
 	mock.ExpectationsWereMet()

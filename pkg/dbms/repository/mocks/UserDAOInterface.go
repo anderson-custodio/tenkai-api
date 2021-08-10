@@ -110,6 +110,27 @@ func (_m *UserDAOInterface) FindByID(id string) (model.User, error) {
 	return r0, r1
 }
 
+// FindByUsersIDFilteredByIntersectionEnv provides a mock function with given fields: userID, userRequesterID
+func (_m *UserDAOInterface) FindByUsersIDFilteredByIntersectionEnv(userID int, userRequesterID int) (model.User, error) {
+	ret := _m.Called(userID, userRequesterID)
+
+	var r0 model.User
+	if rf, ok := ret.Get(0).(func(int, int) model.User); ok {
+		r0 = rf(userID, userRequesterID)
+	} else {
+		r0 = ret.Get(0).(model.User)
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(int, int) error); ok {
+		r1 = rf(userID, userRequesterID)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
 // ListAllUsers provides a mock function with given fields:
 func (_m *UserDAOInterface) ListAllUsers() ([]model.LightUser, error) {
 	ret := _m.Called()

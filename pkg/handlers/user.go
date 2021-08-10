@@ -98,15 +98,32 @@ func (appContext *AppContext) deleteUser(w http.ResponseWriter, r *http.Request)
 
 func (appContext *AppContext) getUser(w http.ResponseWriter, r *http.Request) {
 
+	principal := util.GetPrincipal(r)
+	if principal.Email == "" {
+		http.Error(w, errors.New("Acccess Denied").Error(), http.StatusUnauthorized)
+		return
+	}
+
 	vars := mux.Vars(r)
 	id := vars["id"]
 
 	var user model.User
 	var err error
-	if user, err = appContext.Repositories.UserDAO.FindByID(id); err != nil {
-		global.Logger.Info(global.AppFields{global.Function: "getUser"}, err.Error())
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+	if util.Contains(principal.Roles, "tenkai-manager") {
+		manager, err := appContext.Repositories.UserDAO.FindByEmail(principal.Email)
+		if err != nil {
+			global.Logger.Info(global.AppFields{global.Function: "getUser"}, err.Error())
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		idAsInt, _ := strconv.Atoi(id)
+		user, err = appContext.Repositories.UserDAO.FindByUsersIDFilteredByIntersectionEnv(idAsInt, int(manager.ID))
+	} else {
+		if user, err = appContext.Repositories.UserDAO.FindByID(id); err != nil {
+			global.Logger.Info(global.AppFields{global.Function: "getUser"}, err.Error())
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
 	}
 
 	data, _ := json.Marshal(user)
