@@ -207,6 +207,7 @@ func (dao UserDAOImpl) FindByUsersIDFilteredByIntersectionEnv(userID, userReques
 		dao.Db.ScanRows(rows, &env)
 		envs = append(envs, env)
 	}
+	user.ID = uint(userID)
 	user.Environments = envs
 	return user, err
 }
