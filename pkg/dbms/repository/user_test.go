@@ -136,7 +136,7 @@ func TestListAllUsers(t *testing.T) {
 	row1 := sqlmock.NewRows([]string{"id", "email"}).AddRow(payload.ID, payload.Email)
 	mock.ExpectQuery(`.*`).WillReturnRows(row1)
 
-	u, e := userDAO.ListAllUsers()
+	u, e := userDAO.ListAllUsers("")
 	assert.NoError(t, e)
 	assert.NotNil(t, u)
 

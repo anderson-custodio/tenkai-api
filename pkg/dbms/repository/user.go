@@ -13,7 +13,7 @@ type UserDAOInterface interface {
 	CreateUser(user model2.User) error
 	DeleteUser(id int) error
 	AssociateEnvironmentUser(userID int, environmentID int) error
-	ListAllUsers() ([]model2.LightUser, error)
+	ListAllUsers(email string) ([]model2.LightUser, error)
 	CreateOrUpdateUser(user model2.User) error
 	FindByEmail(email string) (model2.User, error)
 	FindByID(id string) (model2.User, error)
@@ -71,11 +71,13 @@ func (dao UserDAOImpl) AssociateEnvironmentUser(userID int, environmentID int) e
 }
 
 //ListAllUsers - List all users
-func (dao UserDAOImpl) ListAllUsers() ([]model2.LightUser, error) {
+func (dao UserDAOImpl) ListAllUsers(email string) ([]model2.LightUser, error) {
 	users := make([]model2.LightUser, 0)
 	var rows *sql.Rows
 	var err error
-	if rows, err = dao.Db.Table("users").Select([]string{"id", "email"}).Where("deleted_at IS NULL").Rows(); err != nil {
+	clause := "deleted_at IS NULL AND email like '" + email + "%'"
+
+	if rows, err = dao.Db.Table("users").Select([]string{"id", "email"}).Where(clause).Rows(); err != nil {
 		return nil, err
 	}
 	for rows.Next() {

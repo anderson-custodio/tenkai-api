@@ -142,7 +142,7 @@ func TestListUsers(t *testing.T) {
 	userDAO := mocks.UserDAOInterface{}
 	result := &model.UserResult{}
 
-	userDAO.On("ListAllUsers").Return(result.Users, nil)
+	userDAO.On("ListAllUsers", "").Return(result.Users, nil)
 	appContext.Repositories.UserDAO = &userDAO
 
 	req, err := http.NewRequest("GET", "/users", nil)
@@ -161,7 +161,7 @@ func TestListUsers_Error(t *testing.T) {
 
 	userDAO := mocks.UserDAOInterface{}
 
-	userDAO.On("ListAllUsers").Return(nil, errors.New("some error"))
+	userDAO.On("ListAllUsers", "").Return(nil, errors.New("some error"))
 	appContext.Repositories.UserDAO = &userDAO
 
 	req, err := http.NewRequest("GET", "/users", nil)

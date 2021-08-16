@@ -66,7 +66,10 @@ func (appContext *AppContext) listUsers(w http.ResponseWriter, r *http.Request) 
 	result := &model.UserResult{}
 	var err error
 
-	if result.Users, err = appContext.Repositories.UserDAO.ListAllUsers(); err != nil {
+	keys := r.URL.Query()
+	email := keys.Get("email")
+
+	if result.Users, err = appContext.Repositories.UserDAO.ListAllUsers(email); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
