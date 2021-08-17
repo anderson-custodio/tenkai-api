@@ -18,7 +18,7 @@ import (
 func (appContext *AppContext) newUser(w http.ResponseWriter, r *http.Request) {
 
 	principal := util.GetPrincipal(r)
-	if !util.Contains(principal.Roles, constraints.TenkaiAdmin) {
+	if principal.Email == "" {
 		http.Error(w, errors.New("Acccess Defined").Error(), http.StatusUnauthorized)
 		return
 	}
