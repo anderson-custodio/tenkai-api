@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"strconv"
@@ -12,6 +13,12 @@ import (
 )
 
 func (appContext *AppContext) createOrUpdateUserEnvironmentRole(w http.ResponseWriter, r *http.Request) {
+
+	principal := util.GetPrincipal(r)
+	if principal.Email == "" {
+		http.Error(w, "", http.StatusUnauthorized)
+		return
+	}
 
 	w.Header().Set(global.ContentType, global.JSONContentType)
 	var payload model.UserEnvironmentRole
@@ -26,8 +33,41 @@ func (appContext *AppContext) createOrUpdateUserEnvironmentRole(w http.ResponseW
 		return
 	}
 
-	w.WriteHeader(http.StatusCreated)
+	appContext.auditCreateOrUpdateUserEnvironmentRole(r.Context(), principal, payload)
 
+	w.WriteHeader(http.StatusCreated)
+}
+
+func (appContext *AppContext) auditCreateOrUpdateUserEnvironmentRole(ctx context.Context, principal model.Principal, payload model.UserEnvironmentRole) {
+	function := "auditCreateOrUpdateUserEnvironmentRole"
+	env, err := appContext.Repositories.EnvironmentDAO.GetByID(int(payload.EnvironmentID))
+	if err != nil {
+		global.Logger.Error(global.AppFields{global.Function: function}, "Error on audit - "+err.Error())
+		return
+	}
+	roles, err := appContext.Repositories.SecurityOperationDAO.List()
+	if err != nil {
+		global.Logger.Error(global.AppFields{global.Function: function}, "Error on audit - "+err.Error())
+		return
+	}
+	user, err := appContext.Repositories.UserDAO.FindByID(strconv.Itoa(int(payload.UserID)))
+	if err != nil {
+		global.Logger.Error(global.AppFields{global.Function: function}, "Error on audit - "+err.Error())
+		return
+	}
+
+	auditValues := make(map[string]string)
+	auditValues["userID"] = strconv.Itoa(int(payload.UserID))
+	auditValues["user"] = user.Email
+	auditValues["environmentID"] = strconv.Itoa(int(payload.EnvironmentID))
+	auditValues["environment"] = env.Name
+	auditValues["securityOperationID"] = strconv.Itoa(int(payload.SecurityOperationID))
+	for _, role := range roles {
+		if role.ID == payload.SecurityOperationID {
+			auditValues["securityOperation"] = role.Name
+		}
+	}
+	appContext.Auditing.DoAudit(ctx, appContext.Elk, principal.Email, "updateOrCreateEnvironmentRole", auditValues)
 }
 
 func (appContext *AppContext) getUserPolicyByEnvironment(w http.ResponseWriter, r *http.Request) {
