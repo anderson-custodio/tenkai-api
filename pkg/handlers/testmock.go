@@ -164,6 +164,7 @@ type testHandlerFunc func(http.ResponseWriter, *http.Request)
 func testUnmarshalPayloadError(t *testing.T, endpoint string, handFunc testHandlerFunc) *httptest.ResponseRecorder {
 	req, err := http.NewRequest("POST", endpoint, bytes.NewBuffer([]byte(`["invalid": 123]`)))
 	assert.NoError(t, err)
+	mockPrincipal(req)
 
 	rr := httptest.NewRecorder()
 	handler := http.HandlerFunc(handFunc)

@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/gorilla/mux"
+	mockAud "github.com/softplan/tenkai-api/pkg/audit/mocks"
 	"github.com/softplan/tenkai-api/pkg/dbms/model"
 	"github.com/softplan/tenkai-api/pkg/dbms/repository/mocks"
 	"github.com/stretchr/testify/assert"
@@ -95,8 +96,14 @@ func TestCreateOrUpdateUser(t *testing.T) {
 	userDAO.On("CreateOrUpdateUser", mock.Anything).Return(nil)
 	appContext.Repositories.UserDAO = &userDAO
 
+	mockAudit := &mockAud.AuditingInterface{}
+	mockAudit.On("DoAudit", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything)
+	appContext.Auditing = mockAudit
+
 	req, err := http.NewRequest("POST", "/users/createOrUpdate", payload(p))
 	assert.NoError(t, err)
+
+	mockPrincipal(req)
 
 	rr := httptest.NewRecorder()
 	handler := http.HandlerFunc(appContext.createOrUpdateUser)
@@ -127,6 +134,8 @@ func TestCreateOrUpdateUser_Error(t *testing.T) {
 
 	req, err := http.NewRequest("POST", "/users/createOrUpdate", payload(p))
 	assert.NoError(t, err)
+
+	mockPrincipal(req)
 
 	rr := httptest.NewRecorder()
 	handler := http.HandlerFunc(appContext.createOrUpdateUser)
