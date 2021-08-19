@@ -316,3 +316,15 @@ func TestEnvListToStringNames(t *testing.T) {
 	str := appContext.envListToStringNames(getEnvList())
 	assert.Equal(t, "xpto1, xpto2", str)
 }
+
+func TestCreateOrUpdateUser_Unauthorized(t *testing.T) {
+	appContext := AppContext{}
+	req, err := http.NewRequest("POST", "/users/createOrUpdate", nil)
+	assert.NoError(t, err)
+
+	rr := httptest.NewRecorder()
+	handler := http.HandlerFunc(appContext.createOrUpdateUser)
+	handler.ServeHTTP(rr, req)
+
+	assert.Equal(t, http.StatusUnauthorized, rr.Code, "Response should be 401.")
+}
