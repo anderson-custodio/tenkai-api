@@ -7,7 +7,9 @@ import (
 	"testing"
 
 	"github.com/gorilla/mux"
+	mockAud "github.com/softplan/tenkai-api/pkg/audit/mocks"
 	"github.com/softplan/tenkai-api/pkg/dbms/model"
+	"github.com/softplan/tenkai-api/pkg/dbms/repository/mocks"
 	mockRepo "github.com/softplan/tenkai-api/pkg/dbms/repository/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -101,6 +103,25 @@ func TestGetUserPolicyByEnvironment_RoleError(t *testing.T) {
 	assert.Equal(t, http.StatusInternalServerError, rr.Code, "Response should be 500")
 }
 
+func mockRepositoriesForAudit(appContext *AppContext) {
+	mockEnv := mocks.EnvironmentDAOInterface{}
+	mockEnv.On("GetByID", mock.Anything).Return(&model.Environment{Name: "xpto"}, nil)
+
+	mockSecOp := mocks.SecurityOperationDAOInterface{}
+	mockSecOp.On("List").Return([]model.SecurityOperation{}, nil)
+
+	mockUser := mocks.UserDAOInterface{}
+	mockUser.On("FindByID", mock.Anything).Return(model.User{Email: "xpto@mail.com"}, nil)
+
+	appContext.Repositories.EnvironmentDAO = &mockEnv
+	appContext.Repositories.SecurityOperationDAO = &mockSecOp
+	appContext.Repositories.UserDAO = &mockUser
+
+	mockAudit := &mockAud.AuditingInterface{}
+	mockAudit.On("DoAudit", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything)
+	appContext.Auditing = mockAudit
+}
+
 func TestCreateOrUpdateUserEnvironmentRole(t *testing.T) {
 	appContext := AppContext{}
 
@@ -110,9 +131,12 @@ func TestCreateOrUpdateUserEnvironmentRole(t *testing.T) {
 	mockUserEnvRoleDao.On("CreateOrUpdate", p).Return(nil)
 	appContext.Repositories.UserEnvironmentRoleDAO = mockUserEnvRoleDao
 
+	mockRepositoriesForAudit(&appContext)
+
 	req, err := http.NewRequest("POST", "/createOrUpdateUserEnvironmentRole", payload(p))
 	assert.NoError(t, err)
 	assert.NotNil(t, req)
+	mockPrincipal(req)
 
 	rr := httptest.NewRecorder()
 	handler := http.HandlerFunc(appContext.createOrUpdateUserEnvironmentRole)
@@ -139,6 +163,7 @@ func TestCreateOrUpdateUserEnvironmentRoleError(t *testing.T) {
 	req, err := http.NewRequest("POST", "/createOrUpdateUserEnvironmentRole", payload(p))
 	assert.NoError(t, err)
 	assert.NotNil(t, req)
+	mockPrincipal(req)
 
 	rr := httptest.NewRecorder()
 	handler := http.HandlerFunc(appContext.createOrUpdateUserEnvironmentRole)

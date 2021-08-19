@@ -43,6 +43,12 @@ func (appContext *AppContext) newUser(w http.ResponseWriter, r *http.Request) {
 
 func (appContext *AppContext) createOrUpdateUser(w http.ResponseWriter, r *http.Request) {
 
+	principal := util.GetPrincipal(r)
+	if principal.Email == "" {
+		http.Error(w, "", http.StatusUnauthorized)
+		return
+	}
+
 	w.Header().Set(global.ContentType, global.JSONContentType)
 
 	var payload model.User
@@ -57,8 +63,41 @@ func (appContext *AppContext) createOrUpdateUser(w http.ResponseWriter, r *http.
 		return
 	}
 
-	w.WriteHeader(http.StatusCreated)
+	auditValues := make(map[string]string)
+	auditValues["userEmail"] = payload.Email
+	auditValues["userID"] = strconv.Itoa(int(payload.ID))
+	auditValues["environmentsName"] = appContext.envListToStringNames(payload.Environments)
+	auditValues["environmentsID"] = envListToStringIDs(payload.Environments)
+	auditValues["principal"] = principal.Email
 
+	appContext.Auditing.DoAudit(r.Context(), appContext.Elk, principal.Email, "updateOrCreate", auditValues)
+
+	w.WriteHeader(http.StatusCreated)
+}
+
+func envListToStringIDs(list []model.Environment) string {
+	str := ""
+	for i, env := range list {
+		if i == 0 {
+			str = strconv.Itoa(int(env.ID))
+		} else {
+			str = str + ", " + strconv.Itoa(int(env.ID))
+		}
+	}
+	return str
+}
+
+func (appContext *AppContext) envListToStringNames(list []model.Environment) string {
+	str := ""
+	for i, env := range list {
+		environment, _ := appContext.Repositories.EnvironmentDAO.GetByID(int(env.ID))
+		if i == 0 {
+			str = environment.Name
+		} else {
+			str = str + ", " + environment.Name
+		}
+	}
+	return str
 }
 
 func (appContext *AppContext) listUsers(w http.ResponseWriter, r *http.Request) {

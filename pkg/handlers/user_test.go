@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/gorilla/mux"
+	mockAud "github.com/softplan/tenkai-api/pkg/audit/mocks"
 	"github.com/softplan/tenkai-api/pkg/dbms/model"
 	"github.com/softplan/tenkai-api/pkg/dbms/repository/mocks"
 	"github.com/stretchr/testify/assert"
@@ -95,8 +96,14 @@ func TestCreateOrUpdateUser(t *testing.T) {
 	userDAO.On("CreateOrUpdateUser", mock.Anything).Return(nil)
 	appContext.Repositories.UserDAO = &userDAO
 
+	mockAudit := &mockAud.AuditingInterface{}
+	mockAudit.On("DoAudit", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything)
+	appContext.Auditing = mockAudit
+
 	req, err := http.NewRequest("POST", "/users/createOrUpdate", payload(p))
 	assert.NoError(t, err)
+
+	mockPrincipal(req)
 
 	rr := httptest.NewRecorder()
 	handler := http.HandlerFunc(appContext.createOrUpdateUser)
@@ -127,6 +134,8 @@ func TestCreateOrUpdateUser_Error(t *testing.T) {
 
 	req, err := http.NewRequest("POST", "/users/createOrUpdate", payload(p))
 	assert.NoError(t, err)
+
+	mockPrincipal(req)
 
 	rr := httptest.NewRecorder()
 	handler := http.HandlerFunc(appContext.createOrUpdateUser)
@@ -281,4 +290,41 @@ func TestGetUserError(t *testing.T) {
 
 	userDAO.AssertNumberOfCalls(t, "FindByID", 1)
 	assert.Equal(t, http.StatusInternalServerError, rr.Code, "Response should be 500.")
+}
+
+func getEnvList() []model.Environment {
+	env1 := model.Environment{}
+	env1.ID = 111
+	env2 := model.Environment{}
+	env2.ID = 2222
+	list := []model.Environment{env1, env2}
+	return list
+}
+
+func TestEnvListToStringIDs(t *testing.T) {
+	str := envListToStringIDs(getEnvList())
+	assert.Equal(t, "111, 2222", str)
+}
+
+func TestEnvListToStringNames(t *testing.T) {
+	getEnvList()
+	appContext := AppContext{}
+	mockEnv := mocks.EnvironmentDAOInterface{}
+	mockEnv.On("GetByID", 111).Return(&model.Environment{Name: "xpto1"}, nil)
+	mockEnv.On("GetByID", 2222).Return(&model.Environment{Name: "xpto2"}, nil)
+	appContext.Repositories.EnvironmentDAO = &mockEnv
+	str := appContext.envListToStringNames(getEnvList())
+	assert.Equal(t, "xpto1, xpto2", str)
+}
+
+func TestCreateOrUpdateUser_Unauthorized(t *testing.T) {
+	appContext := AppContext{}
+	req, err := http.NewRequest("POST", "/users/createOrUpdate", nil)
+	assert.NoError(t, err)
+
+	rr := httptest.NewRecorder()
+	handler := http.HandlerFunc(appContext.createOrUpdateUser)
+	handler.ServeHTTP(rr, req)
+
+	assert.Equal(t, http.StatusUnauthorized, rr.Code, "Response should be 401.")
 }
