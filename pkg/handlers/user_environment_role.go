@@ -40,19 +40,20 @@ func (appContext *AppContext) createOrUpdateUserEnvironmentRole(w http.ResponseW
 
 func (appContext *AppContext) auditCreateOrUpdateUserEnvironmentRole(ctx context.Context, principal model.Principal, payload model.UserEnvironmentRole) {
 	function := "auditCreateOrUpdateUserEnvironmentRole"
+	auditError := "Error on audit - "
 	env, err := appContext.Repositories.EnvironmentDAO.GetByID(int(payload.EnvironmentID))
 	if err != nil {
-		global.Logger.Error(global.AppFields{global.Function: function}, "Error on audit - "+err.Error())
+		global.Logger.Error(global.AppFields{global.Function: function}, auditError+err.Error())
 		return
 	}
 	roles, err := appContext.Repositories.SecurityOperationDAO.List()
 	if err != nil {
-		global.Logger.Error(global.AppFields{global.Function: function}, "Error on audit - "+err.Error())
+		global.Logger.Error(global.AppFields{global.Function: function}, auditError+err.Error())
 		return
 	}
 	user, err := appContext.Repositories.UserDAO.FindByID(strconv.Itoa(int(payload.UserID)))
 	if err != nil {
-		global.Logger.Error(global.AppFields{global.Function: function}, "Error on audit - "+err.Error())
+		global.Logger.Error(global.AppFields{global.Function: function}, auditError+err.Error())
 		return
 	}
 
