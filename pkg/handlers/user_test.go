@@ -291,3 +291,28 @@ func TestGetUserError(t *testing.T) {
 	userDAO.AssertNumberOfCalls(t, "FindByID", 1)
 	assert.Equal(t, http.StatusInternalServerError, rr.Code, "Response should be 500.")
 }
+
+func getEnvList() []model.Environment {
+	env1 := model.Environment{}
+	env1.ID = 111
+	env2 := model.Environment{}
+	env2.ID = 2222
+	list := []model.Environment{env1, env2}
+	return list
+}
+
+func TestEnvListToStringIDs(t *testing.T) {
+	str := envListToStringIDs(getEnvList())
+	assert.Equal(t, "111, 2222", str)
+}
+
+func TestEnvListToStringNames(t *testing.T) {
+	getEnvList()
+	appContext := AppContext{}
+	mockEnv := mocks.EnvironmentDAOInterface{}
+	mockEnv.On("GetByID", 111).Return(&model.Environment{Name: "xpto1"}, nil)
+	mockEnv.On("GetByID", 2222).Return(&model.Environment{Name: "xpto2"}, nil)
+	appContext.Repositories.EnvironmentDAO = &mockEnv
+	str := appContext.envListToStringNames(getEnvList())
+	assert.Equal(t, "xpto1, xpto2", str)
+}
