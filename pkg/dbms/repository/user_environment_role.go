@@ -92,6 +92,7 @@ func (dao UserEnvironmentRoleDAOImpl) GetUsersAndRoleByEnv(id int) ([]model2.Use
 			u.id = uer.user_id
 		join security_operations so on
 			so.id = uer.security_operation_id
+		join user_environment ue on ue.user_id = uer.user_id and ue.environment_id = e.id
 		where
 			e.id = %d`, id)
 	rows, err := dao.Db.Raw(sql).Rows()
