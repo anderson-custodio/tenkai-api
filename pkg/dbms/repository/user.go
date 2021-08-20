@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/jinzhu/gorm"
+	"github.com/softplan/tenkai-api/pkg/dbms/model"
 	model2 "github.com/softplan/tenkai-api/pkg/dbms/model"
 )
 
@@ -100,6 +101,33 @@ func (dao UserDAOImpl) isEditUser(user model2.User) (*model2.User, error) {
 }
 
 func (dao UserDAOImpl) editUser(user model2.User, loadUser *model2.User) error {
+	var u model2.User
+	if err := dao.Db.Preload("Environments").Where(model2.User{Email: user.Email}).First(&u).Error; err != nil {
+		return err
+	}
+	//will remove roles associated with removed environments
+	environmentsRemoved := []model.Environment{}
+	for _, env := range u.Environments {
+		find := false
+		for _, item := range user.Environments {
+			if item.ID == env.ID {
+				find = true
+				break
+			}
+		}
+		if !find {
+			environmentsRemoved = append(environmentsRemoved, env)
+		}
+	}
+	if len(environmentsRemoved) > 0 {
+		uer := model2.UserEnvironmentRole{}
+		for _, env := range environmentsRemoved {
+			if err := dao.Db.Where("environment_id = ? and user_id = ?", env.ID, user.ID).Delete(uer).Error; err != nil {
+				return err
+			}
+		}
+	}
+
 	//Remove all associations
 	if err := dao.Db.Model(&loadUser).Association("Environments").Clear().Error; err != nil {
 		return err
@@ -114,6 +142,7 @@ func (dao UserDAOImpl) editUser(user model2.User, loadUser *model2.User) error {
 			return err
 		}
 	}
+
 	return nil
 }
 
