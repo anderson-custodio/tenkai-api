@@ -91,7 +91,7 @@ func (dao UserDAOImpl) ListAllUsers(email string) ([]model2.LightUser, error) {
 
 func (dao UserDAOImpl) isEditUser(user model2.User) (*model2.User, error) {
 	var loadUser model2.User
-	if err := dao.Db.Where(model2.User{Email: user.Email}).First(&loadUser).Error; err != nil {
+	if err := dao.Db.Preload("Environments").Where(model2.User{Email: user.Email}).First(&loadUser).Error; err != nil {
 		if !gorm.IsRecordNotFoundError(err) {
 			return nil, err
 		}
@@ -101,13 +101,9 @@ func (dao UserDAOImpl) isEditUser(user model2.User) (*model2.User, error) {
 }
 
 func (dao UserDAOImpl) editUser(user model2.User, loadUser *model2.User) error {
-	var u model2.User
-	if err := dao.Db.Preload("Environments").Where(model2.User{Email: user.Email}).First(&u).Error; err != nil {
-		return err
-	}
 	//will remove roles associated with removed environments
 	environmentsRemoved := []model.Environment{}
-	for _, env := range u.Environments {
+	for _, env := range loadUser.Environments {
 		find := false
 		for _, item := range user.Environments {
 			if item.ID == env.ID {
