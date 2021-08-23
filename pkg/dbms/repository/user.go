@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/jinzhu/gorm"
+	"github.com/softplan/tenkai-api/pkg/dbms/model"
 	model2 "github.com/softplan/tenkai-api/pkg/dbms/model"
 )
 
@@ -90,7 +91,7 @@ func (dao UserDAOImpl) ListAllUsers(email string) ([]model2.LightUser, error) {
 
 func (dao UserDAOImpl) isEditUser(user model2.User) (*model2.User, error) {
 	var loadUser model2.User
-	if err := dao.Db.Where(model2.User{Email: user.Email}).First(&loadUser).Error; err != nil {
+	if err := dao.Db.Preload("Environments").Where(model2.User{Email: user.Email}).First(&loadUser).Error; err != nil {
 		if !gorm.IsRecordNotFoundError(err) {
 			return nil, err
 		}
@@ -99,7 +100,39 @@ func (dao UserDAOImpl) isEditUser(user model2.User) (*model2.User, error) {
 	return &loadUser, nil
 }
 
+func findEnvironemnt(env model.Environment, list []model.Environment) bool {
+	for _, item := range list {
+		if item.ID == env.ID {
+			return true
+		}
+	}
+	return false
+}
+
+func getEnvironmentsRemoved(loadUser, user model.User) []model.Environment {
+	list := []model.Environment{}
+	for _, env := range loadUser.Environments {
+		find := findEnvironemnt(env, user.Environments)
+		if !find {
+			list = append(list, env)
+		}
+	}
+	return list
+}
+
 func (dao UserDAOImpl) editUser(user model2.User, loadUser *model2.User) error {
+	//will remove roles associated with removed environments
+	environmentsRemoved := getEnvironmentsRemoved(*loadUser, user)
+
+	if len(environmentsRemoved) > 0 {
+		uer := model2.UserEnvironmentRole{}
+		for _, env := range environmentsRemoved {
+			if err := dao.Db.Where("environment_id = ? and user_id = ?", env.ID, user.ID).Delete(uer).Error; err != nil {
+				return err
+			}
+		}
+	}
+
 	//Remove all associations
 	if err := dao.Db.Model(&loadUser).Association("Environments").Clear().Error; err != nil {
 		return err
@@ -114,6 +147,7 @@ func (dao UserDAOImpl) editUser(user model2.User, loadUser *model2.User) error {
 			return err
 		}
 	}
+
 	return nil
 }
 

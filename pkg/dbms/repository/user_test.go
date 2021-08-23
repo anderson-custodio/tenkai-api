@@ -164,7 +164,10 @@ func TestCreateOrUpdateUser_Update(t *testing.T) {
 	row1 := sqlmock.NewRows([]string{"id", "email", "default_environment_id"}).
 		AddRow(user.ID, user.Email, user.DefaultEnvironmentID)
 
-	mock.ExpectQuery(`SELECT (.*) FROM "users" WHERE (.*)`).
+	mock.ExpectQuery(`SELECT (.*) FROM (.*) WHERE (.*)`).
+		WithArgs(user.ID).WillReturnRows(row1)
+
+	mock.ExpectQuery(`SELECT (.*) FROM (.*) WHERE (.*)`).
 		WithArgs(user.Email).WillReturnRows(row1)
 
 	mock.ExpectExec(`DELETE FROM "user_environment" WHERE (.*)`).
@@ -302,4 +305,26 @@ func TestFindByUsersIDFilteredByIntersectionEnvError(t *testing.T) {
 	assert.NotNil(t, u)
 
 	mock.ExpectationsWereMet()
+}
+
+func TestFindEnvironemntTrue(t *testing.T) {
+	env := getEnvironmentTestData()
+	list := []model.Environment{env}
+	assert.Equal(t, true, findEnvironemnt(env, list))
+}
+
+func TestFindEnvironemntFalse(t *testing.T) {
+	env := getEnvironmentTestData()
+	list := []model.Environment{}
+	assert.Equal(t, false, findEnvironemnt(env, list))
+}
+
+func TestGetEnvironmentsRemoved(t *testing.T) {
+	user := getUser()
+	env := getEnvironmentTestData()
+	env.ID = 999
+	user.Environments = append(user.Environments, env)
+	newUser := getUser()
+	list := getEnvironmentsRemoved(user, newUser)
+	assert.Equal(t, 1, len(list))
 }
