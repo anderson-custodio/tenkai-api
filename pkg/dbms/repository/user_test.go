@@ -318,3 +318,13 @@ func TestFindEnvironemntFalse(t *testing.T) {
 	list := []model.Environment{}
 	assert.Equal(t, false, findEnvironemnt(env, list))
 }
+
+func TestGetEnvironmentsRemoved(t *testing.T) {
+	user := getUser()
+	env := getEnvironmentTestData()
+	env.ID = 999
+	user.Environments = append(user.Environments, env)
+	newUser := getUser()
+	list := getEnvironmentsRemoved(user, newUser)
+	assert.Equal(t, 1, len(list))
+}
