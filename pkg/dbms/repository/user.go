@@ -100,21 +100,30 @@ func (dao UserDAOImpl) isEditUser(user model2.User) (*model2.User, error) {
 	return &loadUser, nil
 }
 
-func (dao UserDAOImpl) editUser(user model2.User, loadUser *model2.User) error {
-	//will remove roles associated with removed environments
-	environmentsRemoved := []model.Environment{}
-	for _, env := range loadUser.Environments {
-		find := false
-		for _, item := range user.Environments {
-			if item.ID == env.ID {
-				find = true
-				break
-			}
-		}
-		if !find {
-			environmentsRemoved = append(environmentsRemoved, env)
+func findEnvironemnt(env model.Environment, list []model.Environment) bool {
+	for _, item := range list {
+		if item.ID == env.ID {
+			return true
 		}
 	}
+	return false
+}
+
+func getEnvironmentsRemoved(loadUser, user model.User) []model.Environment {
+	list := []model.Environment{}
+	for _, env := range loadUser.Environments {
+		find := findEnvironemnt(env, user.Environments)
+		if !find {
+			list = append(list, env)
+		}
+	}
+	return list
+}
+
+func (dao UserDAOImpl) editUser(user model2.User, loadUser *model2.User) error {
+	//will remove roles associated with removed environments
+	environmentsRemoved := getEnvironmentsRemoved(*loadUser, user)
+
 	if len(environmentsRemoved) > 0 {
 		uer := model2.UserEnvironmentRole{}
 		for _, env := range environmentsRemoved {
