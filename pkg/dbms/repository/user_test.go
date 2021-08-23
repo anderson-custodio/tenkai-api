@@ -189,7 +189,7 @@ func TestCreateOrUpdateUser_Update(t *testing.T) {
 	e := userDAO.CreateOrUpdateUser(user)
 	assert.NoError(t, e)
 
-	//mock.ExpectationsWereMet()
+	mock.ExpectationsWereMet()
 }
 
 func TestCreateOrUpdateUser_Create(t *testing.T) {
@@ -305,4 +305,16 @@ func TestFindByUsersIDFilteredByIntersectionEnvError(t *testing.T) {
 	assert.NotNil(t, u)
 
 	mock.ExpectationsWereMet()
+}
+
+func TestFindEnvironemntTrue(t *testing.T) {
+	env := getEnvironmentTestData()
+	list := []model.Environment{env}
+	assert.Equal(t, true, findEnvironemnt(env, list))
+}
+
+func TestFindEnvironemntFalse(t *testing.T) {
+	env := getEnvironmentTestData()
+	list := []model.Environment{}
+	assert.Equal(t, false, findEnvironemnt(env, list))
 }
