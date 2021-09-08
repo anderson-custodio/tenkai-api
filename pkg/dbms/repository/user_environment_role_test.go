@@ -40,7 +40,7 @@ func TestGetUsersAndRoleByEnvOK(t *testing.T) {
 
 	id := 999
 	sql := fmt.Sprintf(`select
-			distinct u.email,
+			u.email,
 			e."name",
 			so."name"
 		from
@@ -51,8 +51,9 @@ func TestGetUsersAndRoleByEnvOK(t *testing.T) {
 			u.id = uer.user_id
 		join security_operations so on
 			so.id = uer.security_operation_id
+		join user_environment ue on ue.user_id = uer.user_id and ue.environment_id = e.id
 		where
-			e.id = %d
+			e.id = %d and uer.deleted_at is null
 		`, id)
 	mock.ExpectQuery(sql).
 		WillReturnRows(rows)

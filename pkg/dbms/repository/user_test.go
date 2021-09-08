@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"errors"
 	"testing"
 
 	"github.com/DATA-DOG/go-sqlmock"
@@ -135,7 +136,7 @@ func TestListAllUsers(t *testing.T) {
 	row1 := sqlmock.NewRows([]string{"id", "email"}).AddRow(payload.ID, payload.Email)
 	mock.ExpectQuery(`.*`).WillReturnRows(row1)
 
-	u, e := userDAO.ListAllUsers()
+	u, e := userDAO.ListAllUsers("")
 	assert.NoError(t, e)
 	assert.NotNil(t, u)
 
@@ -163,7 +164,10 @@ func TestCreateOrUpdateUser_Update(t *testing.T) {
 	row1 := sqlmock.NewRows([]string{"id", "email", "default_environment_id"}).
 		AddRow(user.ID, user.Email, user.DefaultEnvironmentID)
 
-	mock.ExpectQuery(`SELECT (.*) FROM "users" WHERE (.*)`).
+	mock.ExpectQuery(`SELECT (.*) FROM (.*) WHERE (.*)`).
+		WithArgs(user.ID).WillReturnRows(row1)
+
+	mock.ExpectQuery(`SELECT (.*) FROM (.*) WHERE (.*)`).
 		WithArgs(user.Email).WillReturnRows(row1)
 
 	mock.ExpectExec(`DELETE FROM "user_environment" WHERE (.*)`).
@@ -259,4 +263,68 @@ func TestFindByEmail(t *testing.T) {
 	assert.NotNil(t, u)
 
 	mock.ExpectationsWereMet()
+}
+
+func TestFindByUsersIDFilteredByIntersectionEnvOK(t *testing.T) {
+	db, mock, err := sqlmock.New()
+	mock.MatchExpectationsInOrder(false)
+	assert.Nil(t, err)
+
+	gormDB, err := gorm.Open("postgres", db)
+	defer gormDB.Close()
+
+	userDAO := UserDAOImpl{}
+	userDAO.Db = gormDB
+	rows := sqlmock.NewRows([]string{"user_id", "environment_id", "id", "created_at", "updated_at", "deleted_at", "group", "name", "cluster_uri", "ca_certificate", "token", "namespace", "gateway", "product_version", "current_release", "env_type", "host", "username", "password", "id", "created_at", "updated_at", "deleted_at", "email", "default_environment_id"}).
+		AddRow("160", "135", "135", "2020-02-07 09:08:31", "2020-12-14 14:53:43", "", "unj", "env", "urlapi", "certificate", "token", "envname", "xpto", "", "", "", "", "", "", "160", "2020-09-23 14:13:48", "2020-09-23 14:13:48", "", "xpto@email", "0")
+
+	mock.ExpectQuery(`.*`).
+		WillReturnRows(rows)
+	u, e := userDAO.FindByUsersIDFilteredByIntersectionEnv(350, 349)
+	assert.NoError(t, e)
+	assert.NotNil(t, u)
+
+	mock.ExpectationsWereMet()
+}
+
+func TestFindByUsersIDFilteredByIntersectionEnvError(t *testing.T) {
+	db, mock, err := sqlmock.New()
+	mock.MatchExpectationsInOrder(false)
+	assert.Nil(t, err)
+
+	gormDB, err := gorm.Open("postgres", db)
+	defer gormDB.Close()
+
+	userDAO := UserDAOImpl{}
+	userDAO.Db = gormDB
+
+	mock.ExpectQuery(`.*`).
+		WillReturnError(errors.New("some error"))
+	u, e := userDAO.FindByUsersIDFilteredByIntersectionEnv(350, 349)
+	assert.Error(t, e)
+	assert.NotNil(t, u)
+
+	mock.ExpectationsWereMet()
+}
+
+func TestFindEnvironemntTrue(t *testing.T) {
+	env := getEnvironmentTestData()
+	list := []model.Environment{env}
+	assert.Equal(t, true, findEnvironemnt(env, list))
+}
+
+func TestFindEnvironemntFalse(t *testing.T) {
+	env := getEnvironmentTestData()
+	list := []model.Environment{}
+	assert.Equal(t, false, findEnvironemnt(env, list))
+}
+
+func TestGetEnvironmentsRemoved(t *testing.T) {
+	user := getUser()
+	env := getEnvironmentTestData()
+	env.ID = 999
+	user.Environments = append(user.Environments, env)
+	newUser := getUser()
+	list := getEnvironmentsRemoved(user, newUser)
+	assert.Equal(t, 1, len(list))
 }

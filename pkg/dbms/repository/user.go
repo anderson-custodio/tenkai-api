@@ -2,8 +2,10 @@ package repository
 
 import (
 	"database/sql"
+	"fmt"
 
 	"github.com/jinzhu/gorm"
+	"github.com/softplan/tenkai-api/pkg/dbms/model"
 	model2 "github.com/softplan/tenkai-api/pkg/dbms/model"
 )
 
@@ -12,10 +14,11 @@ type UserDAOInterface interface {
 	CreateUser(user model2.User) error
 	DeleteUser(id int) error
 	AssociateEnvironmentUser(userID int, environmentID int) error
-	ListAllUsers() ([]model2.LightUser, error)
+	ListAllUsers(email string) ([]model2.LightUser, error)
 	CreateOrUpdateUser(user model2.User) error
 	FindByEmail(email string) (model2.User, error)
 	FindByID(id string) (model2.User, error)
+	FindByUsersIDFilteredByIntersectionEnv(userID, userRequesterID int) (model2.User, error)
 }
 
 //UserDAOImpl UserDAOImpl
@@ -69,11 +72,13 @@ func (dao UserDAOImpl) AssociateEnvironmentUser(userID int, environmentID int) e
 }
 
 //ListAllUsers - List all users
-func (dao UserDAOImpl) ListAllUsers() ([]model2.LightUser, error) {
+func (dao UserDAOImpl) ListAllUsers(email string) ([]model2.LightUser, error) {
 	users := make([]model2.LightUser, 0)
 	var rows *sql.Rows
 	var err error
-	if rows, err = dao.Db.Table("users").Select([]string{"id", "email"}).Where("deleted_at IS NULL").Rows(); err != nil {
+	clause := "deleted_at IS NULL AND email like '" + email + "%'"
+
+	if rows, err = dao.Db.Table("users").Select([]string{"id", "email"}).Where(clause).Rows(); err != nil {
 		return nil, err
 	}
 	for rows.Next() {
@@ -86,7 +91,7 @@ func (dao UserDAOImpl) ListAllUsers() ([]model2.LightUser, error) {
 
 func (dao UserDAOImpl) isEditUser(user model2.User) (*model2.User, error) {
 	var loadUser model2.User
-	if err := dao.Db.Where(model2.User{Email: user.Email}).First(&loadUser).Error; err != nil {
+	if err := dao.Db.Preload("Environments").Where(model2.User{Email: user.Email}).First(&loadUser).Error; err != nil {
 		if !gorm.IsRecordNotFoundError(err) {
 			return nil, err
 		}
@@ -95,7 +100,39 @@ func (dao UserDAOImpl) isEditUser(user model2.User) (*model2.User, error) {
 	return &loadUser, nil
 }
 
+func findEnvironemnt(env model.Environment, list []model.Environment) bool {
+	for _, item := range list {
+		if item.ID == env.ID {
+			return true
+		}
+	}
+	return false
+}
+
+func getEnvironmentsRemoved(loadUser, user model.User) []model.Environment {
+	list := []model.Environment{}
+	for _, env := range loadUser.Environments {
+		find := findEnvironemnt(env, user.Environments)
+		if !find {
+			list = append(list, env)
+		}
+	}
+	return list
+}
+
 func (dao UserDAOImpl) editUser(user model2.User, loadUser *model2.User) error {
+	//will remove roles associated with removed environments
+	environmentsRemoved := getEnvironmentsRemoved(*loadUser, user)
+
+	if len(environmentsRemoved) > 0 {
+		uer := model2.UserEnvironmentRole{}
+		for _, env := range environmentsRemoved {
+			if err := dao.Db.Where("environment_id = ? and user_id = ?", env.ID, user.ID).Delete(uer).Error; err != nil {
+				return err
+			}
+		}
+	}
+
 	//Remove all associations
 	if err := dao.Db.Model(&loadUser).Association("Environments").Clear().Error; err != nil {
 		return err
@@ -110,6 +147,7 @@ func (dao UserDAOImpl) editUser(user model2.User, loadUser *model2.User) error {
 			return err
 		}
 	}
+
 	return nil
 }
 
@@ -167,4 +205,45 @@ func (dao UserDAOImpl) FindByID(id string) (model2.User, error) {
 		return user, err
 	}
 	return user, nil
+}
+
+//FindByUsersIDFilteredByIntersectionEnv func
+func (dao UserDAOImpl) FindByUsersIDFilteredByIntersectionEnv(userID, userRequesterID int) (model2.User, error) {
+	sql := fmt.Sprintf(
+		`select
+			*
+		from
+			user_environment ue
+		join environments e on
+			e.id = ue.environment_id
+		join users u on
+			u.id = ue.user_id
+		where
+			ue.user_id = %d
+			and e.id in (
+			select
+				ue2.environment_id
+			from
+				user_environment ue2
+			where
+				ue2.user_id = %d);
+		`, userID, userRequesterID,
+	)
+	user := model2.User{}
+	rows, err := dao.Db.Raw(sql).Rows()
+	if err != nil {
+		return model2.User{}, err
+	}
+
+	defer rows.Close()
+	env := model2.Environment{}
+	envs := []model2.Environment{}
+	for rows.Next() {
+		dao.Db.ScanRows(rows, &user)
+		dao.Db.ScanRows(rows, &env)
+		envs = append(envs, env)
+	}
+	user.ID = uint(userID)
+	user.Environments = envs
+	return user, err
 }
